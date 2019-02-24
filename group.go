@@ -9,6 +9,9 @@ type ErrorGroup interface {
 // Errors uses the ErrorGroup interface to return a slice of errors.
 // If the ErrorGroup interface is not implemented it returns an array containing just the given error.
 func Errors(err error) []error {
+	if err == nil {
+		return nil
+	}
 	if eg, ok := err.(ErrorGroup); ok {
 		return eg.Errors()
 	}

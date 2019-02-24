@@ -91,6 +91,17 @@ import (
 	"io"
 )
 
+// shortcuts
+var (
+	A  = Annotate
+	Af = Annotatef
+	M  = WithMessage
+	Mf = WithMessagef
+	S  = AddStack
+	W  = Wrap
+	Wf = Wrapf
+)
+
 // New returns an error with the supplied message.
 // New also records the stack trace at the point it was called.
 func New(message string) error {
@@ -127,7 +138,8 @@ func HasStack(err error) bool {
 
 // fundamental is an error that has a message and a stack, but no caller.
 type fundamental struct {
-	msg string
+	etype int
+	msg   string
 	*stack
 }
 
@@ -152,26 +164,36 @@ func (f *fundamental) Format(s fmt.State, verb rune) {
 // WithStack annotates err with a stack trace at the point WithStack was called.
 // If err is nil, WithStack returns nil.
 //
-// For most use cases this is deprecated and AddStack should be used (which will ensure just one stack trace).
-// However, one may want to use this in some situations, for example to create a 2nd trace across a goroutine.
+// For most use cases this is deprecated and AddStack should be used
+// (which will ensure just one stack trace).
+// However, one may want to use this in some situations, for example to
+// create a 2nd trace across a goroutine.
 func WithStack(err error) error {
 	if err == nil {
 		return nil
 	}
 
 	return &withStack{
-		err,
-		callers(),
+		error: err,
+		stack: callers(),
 	}
 }
 
 // AddStack is similar to WithStack.
-// However, it will first check with HasStack to see if a stack trace already exists in the causer chain before creating another one.
+// However, it will first check with HasStack to see if a stack trace already
+// exists in the causer chain before creating another one.
 func AddStack(err error) error {
+	if err == nil {
+		return nil
+	}
+
 	if HasStack(err) {
 		return err
 	}
-	return WithStack(err)
+	return &withStack{
+		error: err,
+		stack: callers(),
+	}
 }
 
 type withStack struct {
@@ -200,44 +222,36 @@ func (w *withStack) Format(s fmt.State, verb rune) {
 // Wrap returns an error annotating err with a stack trace
 // at the point Wrap is called, and the supplied message.
 // If err is nil, Wrap returns nil.
-//
-// For most use cases this is deprecated in favor of Annotate.
-// Annotate avoids creating duplicate stack traces.
 func Wrap(err error, message string) error {
 	if err == nil {
 		return nil
 	}
-	hasStack := HasStack(err)
 	err = &withMessage{
 		cause:         err,
 		msg:           message,
-		causeHasStack: hasStack,
+		causeHasStack: HasStack(err),
 	}
 	return &withStack{
-		err,
-		callers(),
+		error: err,
+		stack: callers(),
 	}
 }
 
 // Wrapf returns an error annotating err with a stack trace
-// at the point Wrapf is call, and the format specifier.
+// at the point Wrapf is called, and the format specifier.
 // If err is nil, Wrapf returns nil.
-//
-// For most use cases this is deprecated in favor of Annotatef.
-// Annotatef avoids creating duplicate stack traces.
 func Wrapf(err error, format string, args ...interface{}) error {
 	if err == nil {
 		return nil
 	}
-	hasStack := HasStack(err)
 	err = &withMessage{
 		cause:         err,
 		msg:           fmt.Sprintf(format, args...),
-		causeHasStack: hasStack,
+		causeHasStack: HasStack(err),
 	}
 	return &withStack{
-		err,
-		callers(),
+		error: err,
+		stack: callers(),
 	}
 }
 
@@ -251,6 +265,18 @@ func WithMessage(err error, message string) error {
 		cause:         err,
 		msg:           message,
 		causeHasStack: HasStack(err),
+	}
+}
+
+// WithMessagef annotates err with the format specifier.
+// If err is nil, WithMessagef returns nil.
+func WithMessagef(err error, format string, args ...interface{}) error {
+	if err == nil {
+		return nil
+	}
+	return &withMessage{
+		cause: err,
+		msg:   fmt.Sprintf(format, args...),
 	}
 }
 

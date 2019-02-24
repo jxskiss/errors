@@ -4,118 +4,87 @@ import (
 	"fmt"
 	"runtime"
 	"testing"
+
+	pkgerr "github.com/pkg/errors"
 )
 
 var initpc, _, _, _ = runtime.Caller(0)
 
-func TestFrameLine(t *testing.T) {
-	var tests = []struct {
-		Frame
-		want int
-	}{{
-		Frame(initpc),
-		9,
-	}, {
-		func() Frame {
-			var pc, _, _, _ = runtime.Caller(0)
-			return Frame(pc)
-		}(),
-		20,
-	}, {
-		func() Frame {
-			var pc, _, _, _ = runtime.Caller(1)
-			return Frame(pc)
-		}(),
-		28,
-	}, {
-		Frame(0), // invalid PC
-		0,
-	}}
-
-	for _, tt := range tests {
-		got := tt.Frame.line()
-		want := tt.want
-		if want != got {
-			t.Errorf("Frame(%v): want: %v, got: %v", uintptr(tt.Frame), want, got)
-		}
-	}
-}
-
 type X struct{}
 
-func (x X) val() Frame {
+func (x X) val() pkgerr.Frame {
 	var pc, _, _, _ = runtime.Caller(0)
-	return Frame(pc)
+	return pkgerr.Frame(pc)
 }
 
-func (x *X) ptr() Frame {
+func (x *X) ptr() pkgerr.Frame {
 	var pc, _, _, _ = runtime.Caller(0)
-	return Frame(pc)
+	return pkgerr.Frame(pc)
 }
 
 func TestFrameFormat(t *testing.T) {
 	var tests = []struct {
-		Frame
+		pkgerr.Frame
 		format string
 		want   string
 	}{{
-		Frame(initpc),
+		pkgerr.Frame(initpc),
 		"%s",
 		"stack_test.go",
 	}, {
-		Frame(initpc),
+		pkgerr.Frame(initpc),
 		"%+s",
-		"github.com/pkg/errors.init\n" +
-			"\t.+/github.com/pkg/errors/stack_test.go",
+		"github.com/jxskiss/errors.init\n" +
+			"\t.+/github.com/jxskiss/errors/stack_test.go",
 	}, {
-		Frame(0),
+		pkgerr.Frame(0),
 		"%s",
 		"unknown",
 	}, {
-		Frame(0),
+		pkgerr.Frame(0),
 		"%+s",
 		"unknown",
 	}, {
-		Frame(initpc),
+		pkgerr.Frame(initpc),
 		"%d",
-		"9",
+		"11",
 	}, {
-		Frame(0),
+		pkgerr.Frame(0),
 		"%d",
 		"0",
 	}, {
-		Frame(initpc),
+		pkgerr.Frame(initpc),
 		"%n",
 		"init",
 	}, {
-		func() Frame {
+		func() pkgerr.Frame {
 			var x X
 			return x.ptr()
 		}(),
 		"%n",
 		`\(\*X\).ptr`,
 	}, {
-		func() Frame {
+		func() pkgerr.Frame {
 			var x X
 			return x.val()
 		}(),
 		"%n",
 		"X.val",
 	}, {
-		Frame(0),
+		pkgerr.Frame(0),
 		"%n",
 		"",
 	}, {
-		Frame(initpc),
+		pkgerr.Frame(initpc),
 		"%v",
-		"stack_test.go:9",
+		"stack_test.go:11",
 	}, {
-		Frame(initpc),
+		pkgerr.Frame(initpc),
 		"%+v",
-		"github.com/pkg/errors.init\n" +
-			"\t.+/github.com/pkg/errors/stack_test.go:9",
+		"github.com/jxskiss/errors.init\n" +
+			"\t.+/github.com/jxskiss/errors/stack_test.go:11",
 	}, {
-		Frame(0),
+		pkgerr.Frame(0),
 		"%v",
 		"unknown:0",
 	}}
@@ -131,7 +100,7 @@ func TestFuncname(t *testing.T) {
 	}{
 		{"", ""},
 		{"runtime.main", "main"},
-		{"github.com/pkg/errors.funcname", "funcname"},
+		{"github.com/jxskiss/errors.funcname", "funcname"},
 		{"funcname", "funcname"},
 		{"io.copyBuffer", "copyBuffer"},
 		{"main.(*R).Write", "(*R).Write"},
@@ -152,25 +121,25 @@ func TestStackTrace(t *testing.T) {
 		want []string
 	}{{
 		New("ooh"), []string{
-			"github.com/pkg/errors.TestStackTrace\n" +
-				"\t.+/github.com/pkg/errors/stack_test.go:154",
+			"github.com/jxskiss/errors.TestStackTrace\n" +
+				"\t.+/github.com/jxskiss/errors/stack_test.go:123",
 		},
 	}, {
 		Annotate(New("ooh"), "ahh"), []string{
-			"github.com/pkg/errors.TestStackTrace\n" +
-				"\t.+/github.com/pkg/errors/stack_test.go:159", // this is the stack of Wrap, not New
+			"github.com/jxskiss/errors.TestStackTrace\n" +
+				"\t.+/github.com/jxskiss/errors/stack_test.go:128", // this is the stack of Wrap, not New
 		},
 	}, {
 		Cause(Annotate(New("ooh"), "ahh")), []string{
-			"github.com/pkg/errors.TestStackTrace\n" +
-				"\t.+/github.com/pkg/errors/stack_test.go:164", // this is the stack of New
+			"github.com/jxskiss/errors.TestStackTrace\n" +
+				"\t.+/github.com/jxskiss/errors/stack_test.go:133", // this is the stack of New
 		},
 	}, {
 		func() error { return New("ooh") }(), []string{
-			`github.com/pkg/errors.(func·009|TestStackTrace.func1)` +
-				"\n\t.+/github.com/pkg/errors/stack_test.go:169", // this is the stack of New
-			"github.com/pkg/errors.TestStackTrace\n" +
-				"\t.+/github.com/pkg/errors/stack_test.go:169", // this is the stack of New's caller
+			`github.com/jxskiss/errors.(func·009|TestStackTrace.func1)` +
+				"\n\t.+/github.com/jxskiss/errors/stack_test.go:138", // this is the stack of New
+			"github.com/jxskiss/errors.TestStackTrace\n" +
+				"\t.+/github.com/jxskiss/errors/stack_test.go:138", // this is the stack of New's caller
 		},
 	}, {
 		Cause(func() error {
@@ -178,23 +147,23 @@ func TestStackTrace(t *testing.T) {
 				return Errorf("hello %s", fmt.Sprintf("world"))
 			}()
 		}()), []string{
-			`github.com/pkg/errors.(func·010|TestStackTrace.func2.1)` +
-				"\n\t.+/github.com/pkg/errors/stack_test.go:178", // this is the stack of Errorf
-			`github.com/pkg/errors.(func·011|TestStackTrace.func2)` +
-				"\n\t.+/github.com/pkg/errors/stack_test.go:179", // this is the stack of Errorf's caller
-			"github.com/pkg/errors.TestStackTrace\n" +
-				"\t.+/github.com/pkg/errors/stack_test.go:180", // this is the stack of Errorf's caller's caller
+			`github.com/jxskiss/errors.(func·010|TestStackTrace.func2.1)` +
+				"\n\t.+/github.com/jxskiss/errors/stack_test.go:147", // this is the stack of Errorf
+			`github.com/jxskiss/errors.(func·011|TestStackTrace.func2)` +
+				"\n\t.+/github.com/jxskiss/errors/stack_test.go:148", // this is the stack of Errorf's caller
+			"github.com/jxskiss/errors.TestStackTrace\n" +
+				"\t.+/github.com/jxskiss/errors/stack_test.go:149", // this is the stack of Errorf's caller's caller
 		},
 	}}
 	for i, tt := range tests {
 		ste, ok := tt.err.(interface {
-			StackTrace() StackTrace
+			StackTrace() pkgerr.StackTrace
 		})
 		if !ok {
 			ste = tt.err.(interface {
 				Cause() error
 			}).Cause().(interface {
-				StackTrace() StackTrace
+				StackTrace() pkgerr.StackTrace
 			})
 		}
 		st := ste.StackTrace()
@@ -206,7 +175,7 @@ func TestStackTrace(t *testing.T) {
 
 // This comment helps to maintain original line numbers
 // Perhaps this test is too fragile :)
-func stackTrace() StackTrace {
+func stackTrace() pkgerr.StackTrace {
 	return NewStack(0).StackTrace()
 	// This comment helps to maintain original line numbers
 	// Perhaps this test is too fragile :)
@@ -214,7 +183,7 @@ func stackTrace() StackTrace {
 
 func TestStackTraceFormat(t *testing.T) {
 	tests := []struct {
-		StackTrace
+		pkgerr.StackTrace
 		format string
 		want   string
 	}{{
@@ -234,19 +203,19 @@ func TestStackTraceFormat(t *testing.T) {
 		"%#v",
 		`\[\]errors.Frame\(nil\)`,
 	}, {
-		make(StackTrace, 0),
+		make(pkgerr.StackTrace, 0),
 		"%s",
 		`\[\]`,
 	}, {
-		make(StackTrace, 0),
+		make(pkgerr.StackTrace, 0),
 		"%v",
 		`\[\]`,
 	}, {
-		make(StackTrace, 0),
+		make(pkgerr.StackTrace, 0),
 		"%+v",
 		"",
 	}, {
-		make(StackTrace, 0),
+		make(pkgerr.StackTrace, 0),
 		"%#v",
 		`\[\]errors.Frame{}`,
 	}, {
@@ -261,14 +230,14 @@ func TestStackTraceFormat(t *testing.T) {
 		stackTrace()[:2],
 		"%+v",
 		"\n" +
-			"github.com/pkg/errors.stackTrace\n" +
-			"\t.+/github.com/pkg/errors/stack_test.go:210\n" +
-			"github.com/pkg/errors.TestStackTraceFormat\n" +
-			"\t.+/github.com/pkg/errors/stack_test.go:261",
+			"github.com/jxskiss/errors.stackTrace\n" +
+			"\t.+/github.com/jxskiss/errors/stack_test.go:179\n" +
+			"github.com/jxskiss/errors.TestStackTraceFormat\n" +
+			"\t.+/github.com/jxskiss/errors/stack_test.go:230",
 	}, {
 		stackTrace()[:2],
 		"%#v",
-		`\[\]errors.Frame{stack_test.go:210, stack_test.go:269}`,
+		`\[\]errors.Frame{stack_test.go:179, stack_test.go:238}`,
 	}}
 
 	for i, tt := range tests {
