@@ -3,13 +3,14 @@ package errors
 import (
 	"errors"
 	"fmt"
-	"github.com/matryer/is"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_sizedError(t *testing.T) {
-	is := is.New(t)
+	is := assert.New(t)
 	merr := NewSizedError(5)
 
 	merr.Append(errors.New("error 1"))
@@ -55,7 +56,7 @@ func Test_sizedError(t *testing.T) {
 }
 
 func Test_MultiError(t *testing.T) {
-	is := is.New(t)
+	is := assert.New(t)
 	var err error
 
 	strs := []string{
