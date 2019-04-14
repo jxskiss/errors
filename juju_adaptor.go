@@ -4,6 +4,46 @@ import (
 	"fmt"
 )
 
+type withType struct {
+	etype int
+	fundamental
+}
+
+// Error types.
+const (
+	timeout = iota
+	badRequest
+	notFound
+	userNotFound
+	notSupported
+	notValid
+	alreadyExists
+	unauthorized
+	forbidden
+	notImplemented
+	notProvisioned
+	notAssigned
+	methodNotAllowed
+)
+
+func newTypedError(etype int, format string, args ...interface{}) error {
+	return &withType{
+		etype: etype,
+		fundamental: fundamental{
+			msg:   fmt.Sprintf(format, args...),
+			stack: callersSkip(5),
+		},
+	}
+}
+
+func isErrorType(err error, etype int) bool {
+	switch err := Cause(err).(type) {
+	case *withType:
+		return err.etype == etype
+	}
+	return false
+}
+
 // ==================== juju adaptor start ========================
 
 // Trace is an alias of AddStack.
@@ -59,32 +99,6 @@ func ErrorStack(err error) string {
 	return fmt.Sprintf("%+v", err)
 }
 
-// Error types.
-const (
-	unknown = iota
-	timeout
-	badRequest
-	notFound
-	userNotFound
-	notSupported
-	notValid
-	alreadyExists
-	unauthorized
-	forbidden
-	notImplemented
-	notProvisioned
-	notAssigned
-	methodNotAllowed
-)
-
-func isErrorType(err error, etype int) bool {
-	switch err := Cause(err).(type) {
-	case *fundamental:
-		return err.etype == etype
-	}
-	return false
-}
-
 // IsTimeout reports whether err was timeout error.
 func IsTimeout(err error) bool {
 	return isErrorType(err, timeout)
@@ -92,11 +106,8 @@ func IsTimeout(err error) bool {
 
 // Timeoutf represents an error with timeout message.
 func Timeoutf(format string, args ...interface{}) error {
-	return &fundamental{
-		etype: timeout,
-		msg:   fmt.Sprintf(format+" timeout", args...),
-		stack: callers(),
-	}
+	format += " timeout"
+	return newTypedError(timeout, format, args...)
 }
 
 // IsBadRequest reports whether err was bad request error.
@@ -106,11 +117,8 @@ func IsBadRequest(err error) bool {
 
 // BadRequestf represents an error with bad request message.
 func BadRequestf(format string, args ...interface{}) error {
-	return &fundamental{
-		etype: badRequest,
-		msg:   fmt.Sprintf(format+" bad request", args...),
-		stack: callers(),
-	}
+	format += " bad request"
+	return newTypedError(badRequest, format, args...)
 }
 
 // IsNotFound reports whether err was not found error.
@@ -120,11 +128,8 @@ func IsNotFound(err error) bool {
 
 // NotFoundf represents an error with not found message.
 func NotFoundf(format string, args ...interface{}) error {
-	return &fundamental{
-		etype: notFound,
-		msg:   fmt.Sprintf(format+" not found", args...),
-		stack: callers(),
-	}
+	format += " not found"
+	return newTypedError(notFound, format, args...)
 }
 
 // IsUserNotFound reports whether err was not found error.
@@ -134,11 +139,8 @@ func IsUserNotFound(err error) bool {
 
 // UserNotFoundf represents an error with user not found message.
 func UserNotFoundf(format string, args ...interface{}) error {
-	return &fundamental{
-		etype: userNotFound,
-		msg:   fmt.Sprintf(format+" user not found", args...),
-		stack: callers(),
-	}
+	format += " user not found"
+	return newTypedError(userNotFound, format, args...)
 }
 
 // IsNotSupported reports whether err was not supported error.
@@ -148,11 +150,8 @@ func IsNotSupported(err error) bool {
 
 // NotSupportedf represents an error with not supported message.
 func NotSupportedf(format string, args ...interface{}) error {
-	return &fundamental{
-		etype: notSupported,
-		msg:   fmt.Sprintf(format+" not supported", args...),
-		stack: callers(),
-	}
+	format += " not supported"
+	return newTypedError(notSupported, format, args...)
 }
 
 // IsNotValid reports whether err was not valid error.
@@ -162,11 +161,8 @@ func IsNotValid(err error) bool {
 
 // NotValidf represents an error with not valid message.
 func NotValidf(format string, args ...interface{}) error {
-	return &fundamental{
-		etype: notValid,
-		msg:   fmt.Sprintf(format+" not valid", args...),
-		stack: callers(),
-	}
+	format += " not valid"
+	return newTypedError(notValid, format, args...)
 }
 
 // IsAlreadyExists reports whether err was already exists error.
@@ -176,11 +172,8 @@ func IsAlreadyExists(err error) bool {
 
 // AlreadyExistsf represents an error with already exists message.
 func AlreadyExistsf(format string, args ...interface{}) error {
-	return &fundamental{
-		etype: alreadyExists,
-		msg:   fmt.Sprintf(format+" already exists", args...),
-		stack: callers(),
-	}
+	format += " already exists"
+	return newTypedError(alreadyExists, format, args...)
 }
 
 // IsUnauthorized reports whether err was unauthorized error.
@@ -190,11 +183,8 @@ func IsUnauthorized(err error) bool {
 
 // Unauthorizedf represents an error with unauthorized message.
 func Unauthorizedf(format string, args ...interface{}) error {
-	return &fundamental{
-		etype: unauthorized,
-		msg:   fmt.Sprintf(format+" unauthorized", args...),
-		stack: callers(),
-	}
+	format += " unauthorized"
+	return newTypedError(unauthorized, format, args...)
 }
 
 // IsForbidden reports whether err was forbidden error.
@@ -204,11 +194,8 @@ func IsForbidden(err error) bool {
 
 // Forbiddenf represents an error with forbidden message.
 func Forbiddenf(format string, args ...interface{}) error {
-	return &fundamental{
-		etype: forbidden,
-		msg:   fmt.Sprintf(format+" forbidden", args...),
-		stack: callers(),
-	}
+	format += " forbidden"
+	return newTypedError(forbidden, format, args...)
 }
 
 // IsNotImplemented reports whether err was not implemented error.
@@ -218,11 +205,8 @@ func IsNotImplemented(err error) bool {
 
 // NotImplementedf represents an error with not implemented message.
 func NotImplementedf(format string, args ...interface{}) error {
-	return &fundamental{
-		etype: notImplemented,
-		msg:   fmt.Sprintf(format+" not implemented", args...),
-		stack: callers(),
-	}
+	format += " not implemented"
+	return newTypedError(notImplemented, format, args...)
 }
 
 // IsNotProvisioned reports whether err was not provisioned error.
@@ -232,11 +216,8 @@ func IsNotProvisioned(err error) bool {
 
 // NotProvisionedf represents an error with not provisioned message.
 func NotProvisionedf(format string, args ...interface{}) error {
-	return &fundamental{
-		etype: notProvisioned,
-		msg:   fmt.Sprintf(format+" not provisioned", args...),
-		stack: callers(),
-	}
+	format += " not provisioned"
+	return newTypedError(notProvisioned, format, args...)
 }
 
 // IsNotAssigned reports whether err was not assigned error.
@@ -246,11 +227,8 @@ func IsNotAssigned(err error) bool {
 
 // NotAssignedf represents an error with not assigned message.
 func NotAssignedf(format string, args ...interface{}) error {
-	return &fundamental{
-		etype: notAssigned,
-		msg:   fmt.Sprintf(format+" not assigned", args...),
-		stack: callers(),
-	}
+	format += " not assigned"
+	return newTypedError(notAssigned, format, args...)
 }
 
 // IsMethodNotAllowed reports whether err was method not allowed error.
@@ -260,11 +238,8 @@ func IsMethodNotAllowed(err error) bool {
 
 // MethodNotAllowedf represents an error with method not allowed message.
 func MethodNotAllowedf(format string, args ...interface{}) error {
-	return &fundamental{
-		etype: methodNotAllowed,
-		msg:   fmt.Sprintf(format+" method not allowed", args...),
-		stack: callers(),
-	}
+	format += " method not allowed"
+	return newTypedError(methodNotAllowed, format, args...)
 }
 
 // ==================== juju adaptor end ========================

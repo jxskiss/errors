@@ -138,8 +138,7 @@ func HasStack(err error) bool {
 
 // fundamental is an error that has a message and a stack, but no caller.
 type fundamental struct {
-	etype int
-	msg   string
+	msg string
 	*stack
 }
 
