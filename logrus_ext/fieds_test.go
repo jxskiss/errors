@@ -15,11 +15,11 @@ func Test_WithFields(t *testing.T) {
 	var b bytes.Buffer
 	var logger = logrus.New()
 	logger.Out = &b
-	logger.AddHook(NewErrFieldsHook())
+	logger.AddHook(NewErrFieldsHook("err_"))
 
 	err1 := stderr.New("dummy std error")
-	err1 = WithField(err1, "key1", "value1")
-	err1 = WithFields(err1, logrus.Fields{
+	err1 = errors.WithFields(err1, errors.F{"key1": "values1"})
+	err1 = errors.WithFields(err1, logrus.Fields{
 		"key2": "value2",
 		"key3": "value3",
 	})
@@ -28,8 +28,8 @@ func Test_WithFields(t *testing.T) {
 
 	b.Reset()
 	err2 := errors.New("dummy utils error")
-	err2 = WithField(err2, "key1", "value1")
-	err2 = WithFields(err2, logrus.Fields{
+	err2 = errors.WithFields(err2, errors.F{"key1": "value1"})
+	err2 = errors.WithFields(err2, logrus.Fields{
 		"key2": "value2",
 		"key3": "value3",
 	})
@@ -40,12 +40,12 @@ func Test_WithFields(t *testing.T) {
 func Test_Concurrent(t *testing.T) {
 	var logger = logrus.New()
 	logger.Out = ioutil.Discard
-	logger.AddHook(NewErrFieldsHook())
+	logger.AddHook(NewErrFieldsHook("err_"))
 	logger.AddHook(NewStacktraceHook())
 
 	err1 := errors.New("dummy utils error")
-	err1 = WithField(err1, "key1", "value1")
-	err1 = WithFields(err1, logrus.Fields{
+	err1 = errors.WithFields(err1, errors.F{"key1": "value1"})
+	err1 = errors.WithFields(err1, logrus.Fields{
 		"key2": "value2",
 		"key3": "value3",
 	})
@@ -74,7 +74,7 @@ func Benchmark_Raw(b *testing.B) {
 func Benchmark_WithFields(b *testing.B) {
 	logger := logrus.New()
 	logger.Out = ioutil.Discard
-	logger.AddHook(NewErrFieldsHook())
+	logger.AddHook(NewErrFieldsHook("err_"))
 
 	err := errForBenchmark()
 	for i := 0; i < b.N; i++ {
@@ -96,7 +96,7 @@ func Benchmark_Stacktrace(b *testing.B) {
 func Benchmark_WithFields_Stacktrace(b *testing.B) {
 	logger := logrus.New()
 	logger.Out = ioutil.Discard
-	logger.AddHook(NewErrFieldsHook())
+	logger.AddHook(NewErrFieldsHook("err_"))
 	logger.AddHook(NewStacktraceHook())
 
 	err := errForBenchmark()
@@ -107,7 +107,7 @@ func Benchmark_WithFields_Stacktrace(b *testing.B) {
 
 func errForBenchmark() error {
 	err := errors.New("dummy error for benchmark")
-	err = WithFields(err, logrus.Fields{
+	err = errors.WithFields(err, logrus.Fields{
 		"key1": "value1",
 		"key2": "value2",
 		"key3": "value3",

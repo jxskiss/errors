@@ -253,6 +253,20 @@ func TestWithMessage(t *testing.T) {
 	}
 }
 
+func TestWithFields(t *testing.T) {
+	err := io.EOF
+	fields := F{"key2": "val2", "key1": "val1", "key3": 123, "key4": "456 abc"}
+	err = WithFields(err, fields)
+	if got := err.Error(); got != "EOF" {
+		t.Errorf("WithFields(%v, %q): got %q, want %q", io.EOF, fields, got, "EOF")
+	}
+	got := fmt.Sprintf("%+v", err)
+	want := "EOF\ncontext: key1=val1 key2=val2 key3=123 key4=\"456 abc\""
+	if got != want {
+		t.Errorf("WithFields(%v, %q): got %q, want %q", io.EOF, fields, got, want)
+	}
+}
+
 // errors.New, etc values are not expected to be compared by value
 // but the change in errors#27 made them incomparable. Assert that
 // various kinds of errors have a functional equality operator, even

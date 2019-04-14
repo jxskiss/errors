@@ -50,44 +50,10 @@ func isErrorType(err error, etype int) bool {
 var Trace = AddStack
 
 // Annotate adds a message and ensures there is a stack trace.
-func Annotate(err error, message string) error {
-	if err == nil {
-		return nil
-	}
-	hasStack := HasStack(err)
-	err = &withMessage{
-		cause:         err,
-		msg:           message,
-		causeHasStack: hasStack,
-	}
-	if hasStack {
-		return err
-	}
-	return &withStack{
-		error: err,
-		stack: callers(),
-	}
-}
+var Annotate = Wrap
 
 // Annotatef adds a message and ensures there is a stack trace.
-func Annotatef(err error, format string, args ...interface{}) error {
-	if err == nil {
-		return nil
-	}
-	hasStack := HasStack(err)
-	err = &withMessage{
-		cause:         err,
-		msg:           fmt.Sprintf(format, args...),
-		causeHasStack: hasStack,
-	}
-	if hasStack {
-		return err
-	}
-	return &withStack{
-		error: err,
-		stack: callers(),
-	}
-}
+var Annotatef = Wrapf
 
 // ErrorStack will format a stack trace if it is available, otherwise it will be Error()
 // If the error is nil, the empty string is returned

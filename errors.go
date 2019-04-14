@@ -89,17 +89,7 @@ package errors
 import (
 	"fmt"
 	"io"
-)
-
-// shortcuts
-var (
-	A  = Annotate
-	Af = Annotatef
-	M  = WithMessage
-	Mf = WithMessagef
-	S  = AddStack
-	W  = Wrap
-	Wf = Wrapf
+	"sort"
 )
 
 // New returns an error with the supplied message.
@@ -181,18 +171,21 @@ func WithStack(err error) error {
 // AddStack is similar to WithStack.
 // However, it will first check with HasStack to see if a stack trace already
 // exists in the causer chain before creating another one.
-func AddStack(err error) error {
+func AddStack(err error, fields ...map[string]interface{}) error {
 	if err == nil {
 		return nil
 	}
 
-	if HasStack(err) {
-		return err
+	if !HasStack(err) {
+		err = &withStack{
+			error: err,
+			stack: callers(),
+		}
 	}
-	return &withStack{
-		error: err,
-		stack: callers(),
+	if len(fields) > 0 {
+		err = WithFields(err, fields...)
 	}
+	return err
 }
 
 type withStack struct {
@@ -200,7 +193,8 @@ type withStack struct {
 	*stack
 }
 
-func (w *withStack) Cause() error { return w.error }
+func (w *withStack) Cause() error   { return w.error }
+func (w *withStack) HasStack() bool { return true }
 
 func (w *withStack) Format(s fmt.State, verb rune) {
 	switch verb {
@@ -221,19 +215,28 @@ func (w *withStack) Format(s fmt.State, verb rune) {
 // Wrap returns an error annotating err with a stack trace
 // at the point Wrap is called, and the supplied message.
 // If err is nil, Wrap returns nil.
-func Wrap(err error, message string) error {
+func Wrap(err error, message string, fields ...map[string]interface{}) error {
 	if err == nil {
 		return nil
 	}
-	err = &withMessage{
-		cause:         err,
-		msg:           message,
-		causeHasStack: HasStack(err),
+	hasStack := HasStack(err)
+	if message != "" {
+		err = &withMessage{
+			cause:         err,
+			msg:           message,
+			causeHasStack: hasStack,
+		}
 	}
-	return &withStack{
-		error: err,
-		stack: callers(),
+	if !hasStack {
+		err = &withStack{
+			error: err,
+			stack: callers(),
+		}
 	}
+	if len(fields) > 0 {
+		err = WithFields(err, fields...)
+	}
+	return err
 }
 
 // Wrapf returns an error annotating err with a stack trace
@@ -243,10 +246,14 @@ func Wrapf(err error, format string, args ...interface{}) error {
 	if err == nil {
 		return nil
 	}
+	hasStack := HasStack(err)
 	err = &withMessage{
 		cause:         err,
 		msg:           fmt.Sprintf(format, args...),
 		causeHasStack: HasStack(err),
+	}
+	if hasStack {
+		return err
 	}
 	return &withStack{
 		error: err,
@@ -303,6 +310,102 @@ func (w *withMessage) Format(s fmt.State, verb rune) {
 	}
 }
 
+type F map[string]interface{}
+
+func (f F) AsList() []interface{} {
+	if len(f) == 0 {
+		return nil
+	}
+	ll := make([]interface{}, 0, len(f)*2)
+	for k, v := range f {
+		ll = append(ll, k, v)
+	}
+	return ll
+}
+
+type withFields struct {
+	error
+	fields        F
+	causeHasStack bool
+}
+
+func (w *withFields) Cause() error   { return w.error }
+func (w *withFields) HasStack() bool { return w.causeHasStack }
+
+func (w *withFields) Format(s fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		if s.Flag('+') {
+			fmt.Fprintf(s, "%+v", w.Cause())
+			if len(w.fields) > 0 {
+				keys := make([]string, 0, len(w.fields))
+				for k := range w.fields {
+					keys = append(keys, k)
+				}
+				sort.Strings(keys)
+
+				fmt.Fprint(s, "\ncontext:")
+				for _, k := range keys {
+					w.appendKeyValue(s, k, w.fields[k])
+				}
+			}
+			return
+		}
+		fallthrough
+	case 's', 'q':
+		io.WriteString(s, w.Error())
+	}
+}
+
+func (w *withFields) appendKeyValue(s fmt.State, key string, value interface{}) {
+	fmt.Fprintf(s, " %s=", key)
+	stringVal, ok := value.(string)
+	if !ok {
+		stringVal = fmt.Sprint(value)
+	}
+	if !w.needsQuoting(stringVal) {
+		fmt.Fprint(s, stringVal)
+	} else {
+		fmt.Fprintf(s, "%q", stringVal)
+	}
+}
+
+func (w *withFields) needsQuoting(text string) bool {
+	for _, ch := range text {
+		if !((ch >= 'a' && ch <= 'z') ||
+			(ch >= 'A' && ch <= 'Z') ||
+			(ch >= '0' && ch <= '9') ||
+			ch == '-' || ch == '.' || ch == '_' || ch == '/' || ch == '@' || ch == '^' || ch == '+') {
+			return true
+		}
+	}
+	return false
+}
+
+func WithFields(err error, fields ...map[string]interface{}) error {
+	if err == nil {
+		return nil
+	}
+	if len(fields) == 0 {
+		return err
+	}
+	oldFields := Fields(err)
+	ff := make(F, len(fields[0])*len(fields)+len(oldFields))
+	for k, v := range oldFields {
+		ff[k] = v
+	}
+	for _, f := range fields {
+		for k, v := range f {
+			ff[k] = v
+		}
+	}
+	return &withFields{
+		error:         err,
+		fields:        ff,
+		causeHasStack: HasStack(err),
+	}
+}
+
 // Cause returns the underlying cause of the error, if possible.
 // An error value has a cause if it implements the following
 // interface:
@@ -346,4 +449,16 @@ func Find(origErr error, test func(error) bool) error {
 		return false
 	})
 	return foundErr
+}
+
+// Fields returns attached fields of the given error if available, else nil.
+func Fields(err error) F {
+	fieldsErr := Find(err, func(err error) bool {
+		_, ok := err.(*withFields)
+		return ok
+	})
+	if fieldsErr == nil {
+		return nil
+	}
+	return fieldsErr.(*withFields).fields
 }
