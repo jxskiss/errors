@@ -11,10 +11,15 @@ import (
 	pkgerr "github.com/pkg/errors"
 )
 
+type (
+	Frame      = pkgerr.Frame
+	StackTrace = pkgerr.StackTrace
+)
+
 // StackTracer retrieves the StackTrace
 // Generally you would want to use the GetStackTracer function to do that.
 type StackTracer interface {
-	StackTrace() pkgerr.StackTrace
+	StackTrace() StackTrace
 }
 
 // GetStackTracer will return the first StackTracer in the causer chain.
@@ -49,7 +54,7 @@ func (s *stack) Format(st fmt.State, verb rune) {
 			var b bytes.Buffer
 			b.Grow(len(*s) * stackMinLen)
 			for _, pc := range *s {
-				f := pkgerr.Frame(pc)
+				f := Frame(pc)
 				fmt.Fprintf(&b, "\n%+v", f)
 			}
 			io.Copy(st, &b)
@@ -57,10 +62,10 @@ func (s *stack) Format(st fmt.State, verb rune) {
 	}
 }
 
-func (s *stack) StackTrace() pkgerr.StackTrace {
-	f := make([]pkgerr.Frame, len(*s))
+func (s *stack) StackTrace() StackTrace {
+	f := make([]Frame, len(*s))
 	for i := 0; i < len(f); i++ {
-		f[i] = pkgerr.Frame((*s)[i])
+		f[i] = Frame((*s)[i])
 	}
 	return f
 }

@@ -4,87 +4,87 @@ import (
 	"fmt"
 	"runtime"
 	"testing"
-
-	pkgerr "github.com/pkg/errors"
 )
+
+// empty line to keep the line numbers correct
 
 var initpc, _, _, _ = runtime.Caller(0)
 
 type X struct{}
 
-func (x X) val() pkgerr.Frame {
+func (x X) val() Frame {
 	var pc, _, _, _ = runtime.Caller(0)
-	return pkgerr.Frame(pc)
+	return Frame(pc)
 }
 
-func (x *X) ptr() pkgerr.Frame {
+func (x *X) ptr() Frame {
 	var pc, _, _, _ = runtime.Caller(0)
-	return pkgerr.Frame(pc)
+	return Frame(pc)
 }
 
 func TestFrameFormat(t *testing.T) {
 	var tests = []struct {
-		pkgerr.Frame
+		Frame
 		format string
 		want   string
 	}{{
-		pkgerr.Frame(initpc),
+		Frame(initpc),
 		"%s",
 		"stack_test.go",
 	}, {
-		pkgerr.Frame(initpc),
+		Frame(initpc),
 		"%+s",
 		"github.com/jxskiss/errors.init\n" +
 			"\t.+/github.com/jxskiss/errors/stack_test.go",
 	}, {
-		pkgerr.Frame(0),
+		Frame(0),
 		"%s",
 		"unknown",
 	}, {
-		pkgerr.Frame(0),
+		Frame(0),
 		"%+s",
 		"unknown",
 	}, {
-		pkgerr.Frame(initpc),
+		Frame(initpc),
 		"%d",
 		"11",
 	}, {
-		pkgerr.Frame(0),
+		Frame(0),
 		"%d",
 		"0",
 	}, {
-		pkgerr.Frame(initpc),
+		Frame(initpc),
 		"%n",
 		"init",
 	}, {
-		func() pkgerr.Frame {
+		func() Frame {
 			var x X
 			return x.ptr()
 		}(),
 		"%n",
 		`\(\*X\).ptr`,
 	}, {
-		func() pkgerr.Frame {
+		func() Frame {
 			var x X
 			return x.val()
 		}(),
 		"%n",
 		"X.val",
 	}, {
-		pkgerr.Frame(0),
+		Frame(0),
 		"%n",
 		"",
 	}, {
-		pkgerr.Frame(initpc),
+		Frame(initpc),
 		"%v",
 		"stack_test.go:11",
 	}, {
-		pkgerr.Frame(initpc),
+		Frame(initpc),
 		"%+v",
 		"github.com/jxskiss/errors.init\n" +
 			"\t.+/github.com/jxskiss/errors/stack_test.go:11",
 	}, {
-		pkgerr.Frame(0),
+		Frame(0),
 		"%v",
 		"unknown:0",
 	}}
@@ -157,13 +157,13 @@ func TestStackTrace(t *testing.T) {
 	}}
 	for i, tt := range tests {
 		ste, ok := tt.err.(interface {
-			StackTrace() pkgerr.StackTrace
+			StackTrace() StackTrace
 		})
 		if !ok {
 			ste = tt.err.(interface {
 				Cause() error
 			}).Cause().(interface {
-				StackTrace() pkgerr.StackTrace
+				StackTrace() StackTrace
 			})
 		}
 		st := ste.StackTrace()
@@ -175,7 +175,7 @@ func TestStackTrace(t *testing.T) {
 
 // This comment helps to maintain original line numbers
 // Perhaps this test is too fragile :)
-func stackTrace() pkgerr.StackTrace {
+func stackTrace() StackTrace {
 	return NewStack(0).StackTrace()
 	// This comment helps to maintain original line numbers
 	// Perhaps this test is too fragile :)
@@ -183,7 +183,7 @@ func stackTrace() pkgerr.StackTrace {
 
 func TestStackTraceFormat(t *testing.T) {
 	tests := []struct {
-		pkgerr.StackTrace
+		StackTrace
 		format string
 		want   string
 	}{{
@@ -203,19 +203,19 @@ func TestStackTraceFormat(t *testing.T) {
 		"%#v",
 		`\[\]errors.Frame\(nil\)`,
 	}, {
-		make(pkgerr.StackTrace, 0),
+		make(StackTrace, 0),
 		"%s",
 		`\[\]`,
 	}, {
-		make(pkgerr.StackTrace, 0),
+		make(StackTrace, 0),
 		"%v",
 		`\[\]`,
 	}, {
-		make(pkgerr.StackTrace, 0),
+		make(StackTrace, 0),
 		"%+v",
 		"",
 	}, {
-		make(pkgerr.StackTrace, 0),
+		make(StackTrace, 0),
 		"%#v",
 		`\[\]errors.Frame{}`,
 	}, {
