@@ -10,7 +10,7 @@ This errors package is different from pkg/errors or pingcap/errors in following 
 
 2. Some helper functions to help migration from [juju/errors](https://github.com/juju/errors) with signature compatibility. This package use different implementation with pingcap/errors.
 
-3. A new error type `withFields` is added to pass context information of the error like logrus. Extra key-value context information can be attached to the error by calling functions `WithFields`, `AddStack` or `Wrap`. The attached key-value information can be printed by using `fmt.Sprint("%+v", err)`. Also the additional package [logrus_ext](./logrus_ext) can be used to automatically hook the context information when using with logrus.
+3. A new error type `withFields` is added to pass context information of the error like logrus. Extra key-value context information can be attached to the error by calling functions `WithFields`, `New`, `AddStack`, `WithStack`, `WithMessage` or `Wrap`. The attached key-value information can be printed by using `fmt.Sprint("%+v", err)`. Also the additional package [logrus_ext](./logrus_ext) can be used to automatically hook the context information when using with logrus.
 
 4. Group errors and multi errors handling primitives are added.
 

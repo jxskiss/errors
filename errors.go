@@ -94,11 +94,19 @@ import (
 
 // New returns an error with the supplied message.
 // New also records the stack trace at the point it was called.
-func New(message string) error {
-	return &fundamental{
+//
+// If len(fields) > 0, the additional context information will be attached
+// to the error by calling WithFields.
+func New(message string, fields ...map[string]interface{}) error {
+	var err error
+	err = &fundamental{
 		msg:   message,
 		stack: callers(),
 	}
+	if len(fields) > 0 {
+		err = WithFields(err, fields...)
+	}
+	return err
 }
 
 // Errorf formats according to a format specifier and returns the string
@@ -153,19 +161,26 @@ func (f *fundamental) Format(s fmt.State, verb rune) {
 // WithStack annotates err with a stack trace at the point WithStack was called.
 // If err is nil, WithStack returns nil.
 //
+// If len(fields) > 0, the additional context information will be attached
+// to the error by calling WithFields.
+//
 // For most use cases this is deprecated and AddStack should be used
 // (which will ensure just one stack trace).
 // However, one may want to use this in some situations, for example to
 // create a 2nd trace across a goroutine.
-func WithStack(err error) error {
+func WithStack(err error, fields ...map[string]interface{}) error {
 	if err == nil {
 		return nil
 	}
 
-	return &withStack{
+	err = &withStack{
 		error: err,
 		stack: callers(),
 	}
+	if len(fields) > 0 {
+		err = WithFields(err, fields...)
+	}
+	return err
 }
 
 // AddStack is similar to WithStack.
@@ -215,6 +230,9 @@ func (w *withStack) Format(s fmt.State, verb rune) {
 // Wrap returns an error annotating err with a stack trace
 // at the point Wrap is called, and the supplied message.
 // If err is nil, Wrap returns nil.
+//
+// If len(fields) > 0, the additional context information will be attached
+// to the error by calling WithFields.
 func Wrap(err error, message string, fields ...map[string]interface{}) error {
 	if err == nil {
 		return nil
@@ -263,15 +281,22 @@ func Wrapf(err error, format string, args ...interface{}) error {
 
 // WithMessage annotates err with a new message.
 // If err is nil, WithMessage returns nil.
-func WithMessage(err error, message string) error {
+//
+// If len(fields) > 0, the additional context information will be attached
+// to the error by calling WithFields.
+func WithMessage(err error, message string, fields ...map[string]interface{}) error {
 	if err == nil {
 		return nil
 	}
-	return &withMessage{
+	err = &withMessage{
 		cause:         err,
 		msg:           message,
 		causeHasStack: HasStack(err),
 	}
+	if len(fields) > 0 {
+		err = WithFields(err, fields...)
+	}
+	return err
 }
 
 // WithMessagef annotates err with the format specifier.
@@ -382,6 +407,9 @@ func (w *withFields) needsQuoting(text string) bool {
 	return false
 }
 
+// WithFields attaches given additional context information to err.
+// If err is nil, WithFields returns nil.
+// If len(fields) == 0, WithFields returns the original err.
 func WithFields(err error, fields ...map[string]interface{}) error {
 	if err == nil {
 		return nil
