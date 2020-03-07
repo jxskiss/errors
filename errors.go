@@ -453,8 +453,12 @@ func Cause(err error) error {
 	return Cause(cause)
 }
 
-// Unwrap uses causer to return the next error in the chain or nil.
-// This goes one-level deeper, whereas Cause goes as far as possible
+// Unwrap returns the next error in the chain if it implements the
+// causer interface, this goes one-level deeper, whereas Cause goes
+// as far as possible.
+//
+// If the err does not implements the causer interface, this function
+// behaves like the Unwrap function from standard errors library in go1.13+.
 func Unwrap(err error) error {
 	type causer interface {
 		Cause() error
@@ -462,6 +466,14 @@ func Unwrap(err error) error {
 	if unErr, ok := err.(causer); ok {
 		return unErr.Cause()
 	}
+
+	type stdUnwrap interface {
+		Unwrap() error
+	}
+	if unErr, ok := err.(stdUnwrap); ok {
+		return unErr.Unwrap()
+	}
+
 	return nil
 }
 
