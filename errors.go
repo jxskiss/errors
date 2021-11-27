@@ -1,110 +1,17 @@
-// Package errors provides simple error handling primitives.
-//
-// The traditional error handling idiom in Go is roughly akin to
-//
-//     if err != nil {
-//             return err
-//     }
-//
-// which applied recursively up the call stack results in error reports
-// without context or debugging information. The errors package allows
-// programmers to add context to the failure path in their code in a way
-// that does not destroy the original value of the error.
-//
-// Adding context to an error
-//
-// The errors.Annotate function returns a new error that adds context to the
-// original error by recording a stack trace at the point Annotate is called,
-// and the supplied message. For example
-//
-//     _, err := ioutil.ReadAll(r)
-//     if err != nil {
-//             return errors.Annotate(err, "read failed")
-//     }
-//
-// If additional control is required the errors.AddStack and errors.WithMessage
-// functions destructure errors.Annotate into its component operations of annotating
-// an error with a stack trace and an a message, respectively.
-//
-// Retrieving the cause of an error
-//
-// Using errors.Annotate constructs a stack of errors, adding context to the
-// preceding error. Depending on the nature of the error it may be necessary
-// to reverse the operation of errors.Annotate to retrieve the original error
-// for inspection. Any error value which implements this interface
-//
-//     type causer interface {
-//             Cause() error
-//     }
-//
-// can be inspected by errors.Cause. errors.Cause will recursively retrieve
-// the topmost error which does not implement causer, which is assumed to be
-// the original cause. For example:
-//
-//     switch err := errors.Cause(err).(type) {
-//     case *MyError:
-//             // handle specifically
-//     default:
-//             // unknown error
-//     }
-//
-// causer interface is not exported by this package, but is considered a part
-// of stable public API.
-// errors.Unwrap is also available: this will retrieve the next error in the chain.
-//
-// Formatted printing of errors
-//
-// All error values returned from this package implement fmt.Formatter and can
-// be formatted by the fmt package. The following verbs are supported
-//
-//     %s    print the error. If the error has a Cause it will be
-//           printed recursively
-//     %v    see %s
-//     %+v   extended format. Each Frame of the error's StackTrace will
-//           be printed in detail.
-//
-// Retrieving the stack trace of an error or wrapper
-//
-// New, Errorf, Annotate, and Annotatef record a stack trace at the point they are invoked.
-// This information can be retrieved with the StackTracer interface that returns
-// a StackTrace. Where errors.StackTrace is defined as
-//
-//     type StackTrace []Frame
-//
-// The Frame type represents a call site in the stack trace. Frame supports
-// the fmt.Formatter interface that can be used for printing information about
-// the stack trace of this error. For example:
-//
-//     if stacked := errors.GetStackTracer(err); stacked != nil {
-//             for _, f := range stacked.StackTrace() {
-//                     fmt.Printf("%+s:%d", f)
-//             }
-//     }
-//
-// See the documentation for Frame.Format for more details.
-//
-// errors.Find can be used to search for an error in the error chain.
 package errors
 
 import (
 	"fmt"
 	"io"
-	"sort"
 )
 
 // New returns an error with the supplied message.
 // New also records the stack trace at the point it was called.
-//
-// If len(fields) > 0, the additional context information will be attached
-// to the error by calling WithFields.
-func New(message string, fields ...map[string]interface{}) error {
+func New(message string) error {
 	var err error
 	err = &fundamental{
 		msg:   message,
 		stack: callers(),
-	}
-	if len(fields) > 0 {
-		err = WithFields(err, fields...)
 	}
 	return err
 }
@@ -119,16 +26,16 @@ func Errorf(format string, args ...interface{}) error {
 	}
 }
 
-// StackTraceAware is an optimization to avoid repetitive traversals of an error chain.
+// stacktraceAware is an optimization to avoid repetitive traversals of an error chain.
 // HasStack checks for this marker first.
 // Annotate/Wrap and Annotatef/Wrapf will produce this marker.
-type StackTraceAware interface {
+type stacktraceAware interface {
 	HasStack() bool
 }
 
 // HasStack tells whether a StackTracer exists in the error chain
 func HasStack(err error) bool {
-	if errWithStack, ok := err.(StackTraceAware); ok {
+	if errWithStack, ok := err.(stacktraceAware); ok {
 		return errWithStack.HasStack()
 	}
 	return GetStackTracer(err) != nil
@@ -161,14 +68,11 @@ func (f *fundamental) Format(s fmt.State, verb rune) {
 // WithStack annotates err with a stack trace at the point WithStack was called.
 // If err is nil, WithStack returns nil.
 //
-// If len(fields) > 0, the additional context information will be attached
-// to the error by calling WithFields.
-//
 // For most use cases this is deprecated and AddStack should be used
 // (which will ensure just one stack trace).
 // However, one may want to use this in some situations, for example to
 // create a 2nd trace across a goroutine.
-func WithStack(err error, fields ...map[string]interface{}) error {
+func WithStack(err error) error {
 	if err == nil {
 		return nil
 	}
@@ -177,16 +81,13 @@ func WithStack(err error, fields ...map[string]interface{}) error {
 		error: err,
 		stack: callers(),
 	}
-	if len(fields) > 0 {
-		err = WithFields(err, fields...)
-	}
 	return err
 }
 
 // AddStack is similar to WithStack.
 // However, it will first check with HasStack to see if a stack trace already
 // exists in the causer chain before creating another one.
-func AddStack(err error, fields ...map[string]interface{}) error {
+func AddStack(err error) error {
 	if err == nil {
 		return nil
 	}
@@ -196,9 +97,6 @@ func AddStack(err error, fields ...map[string]interface{}) error {
 			error: err,
 			stack: callers(),
 		}
-	}
-	if len(fields) > 0 {
-		err = WithFields(err, fields...)
 	}
 	return err
 }
@@ -210,6 +108,9 @@ type withStack struct {
 
 func (w *withStack) Cause() error   { return w.error }
 func (w *withStack) HasStack() bool { return true }
+
+// Unwrap provides compatibility for Go 1.13 error chains.
+func (w *withStack) Unwrap() error { return w.error }
 
 func (w *withStack) Format(s fmt.State, verb rune) {
 	switch verb {
@@ -230,10 +131,7 @@ func (w *withStack) Format(s fmt.State, verb rune) {
 // Wrap returns an error annotating err with a stack trace
 // at the point Wrap is called, and the supplied message.
 // If err is nil, Wrap returns nil.
-//
-// If len(fields) > 0, the additional context information will be attached
-// to the error by calling WithFields.
-func Wrap(err error, message string, fields ...map[string]interface{}) error {
+func Wrap(err error, message string) error {
 	if err == nil {
 		return nil
 	}
@@ -250,9 +148,6 @@ func Wrap(err error, message string, fields ...map[string]interface{}) error {
 			error: err,
 			stack: callers(),
 		}
-	}
-	if len(fields) > 0 {
-		err = WithFields(err, fields...)
 	}
 	return err
 }
@@ -279,12 +174,10 @@ func Wrapf(err error, format string, args ...interface{}) error {
 	}
 }
 
+
 // WithMessage annotates err with a new message.
 // If err is nil, WithMessage returns nil.
-//
-// If len(fields) > 0, the additional context information will be attached
-// to the error by calling WithFields.
-func WithMessage(err error, message string, fields ...map[string]interface{}) error {
+func WithMessage(err error, message string) error {
 	if err == nil {
 		return nil
 	}
@@ -292,9 +185,6 @@ func WithMessage(err error, message string, fields ...map[string]interface{}) er
 		cause:         err,
 		msg:           message,
 		causeHasStack: HasStack(err),
-	}
-	if len(fields) > 0 {
-		err = WithFields(err, fields...)
 	}
 	return err
 }
@@ -321,6 +211,9 @@ func (w *withMessage) Error() string  { return w.msg + ": " + w.cause.Error() }
 func (w *withMessage) Cause() error   { return w.cause }
 func (w *withMessage) HasStack() bool { return w.causeHasStack }
 
+// Unwrap provides compatibility for Go 1.13 error chains.
+func (w *withMessage) Unwrap() error { return w.cause }
+
 func (w *withMessage) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
@@ -332,105 +225,6 @@ func (w *withMessage) Format(s fmt.State, verb rune) {
 		fallthrough
 	case 's', 'q':
 		io.WriteString(s, w.Error())
-	}
-}
-
-type F map[string]interface{}
-
-func (f F) AsList() []interface{} {
-	if len(f) == 0 {
-		return nil
-	}
-	ll := make([]interface{}, 0, len(f)*2)
-	for k, v := range f {
-		ll = append(ll, k, v)
-	}
-	return ll
-}
-
-type withFields struct {
-	error
-	fields        F
-	causeHasStack bool
-}
-
-func (w *withFields) Cause() error   { return w.error }
-func (w *withFields) HasStack() bool { return w.causeHasStack }
-
-func (w *withFields) Format(s fmt.State, verb rune) {
-	switch verb {
-	case 'v':
-		if s.Flag('+') {
-			fmt.Fprintf(s, "%+v", w.Cause())
-			if len(w.fields) > 0 {
-				keys := make([]string, 0, len(w.fields))
-				for k := range w.fields {
-					keys = append(keys, k)
-				}
-				sort.Strings(keys)
-
-				fmt.Fprint(s, "\ncontext:")
-				for _, k := range keys {
-					w.appendKeyValue(s, k, w.fields[k])
-				}
-			}
-			return
-		}
-		fallthrough
-	case 's', 'q':
-		io.WriteString(s, w.Error())
-	}
-}
-
-func (w *withFields) appendKeyValue(s fmt.State, key string, value interface{}) {
-	fmt.Fprintf(s, " %s=", key)
-	stringVal, ok := value.(string)
-	if !ok {
-		stringVal = fmt.Sprint(value)
-	}
-	if !w.needsQuoting(stringVal) {
-		fmt.Fprint(s, stringVal)
-	} else {
-		fmt.Fprintf(s, "%q", stringVal)
-	}
-}
-
-func (w *withFields) needsQuoting(text string) bool {
-	for _, ch := range text {
-		if !((ch >= 'a' && ch <= 'z') ||
-			(ch >= 'A' && ch <= 'Z') ||
-			(ch >= '0' && ch <= '9') ||
-			ch == '-' || ch == '.' || ch == '_' || ch == '/' || ch == '@' || ch == '^' || ch == '+') {
-			return true
-		}
-	}
-	return false
-}
-
-// WithFields attaches given additional context information to err.
-// If err is nil, WithFields returns nil.
-// If len(fields) == 0, WithFields returns the original err.
-func WithFields(err error, fields ...map[string]interface{}) error {
-	if err == nil {
-		return nil
-	}
-	if len(fields) == 0 {
-		return err
-	}
-	oldFields := Fields(err)
-	ff := make(F, len(fields[0])*len(fields)+len(oldFields))
-	for k, v := range oldFields {
-		ff[k] = v
-	}
-	for _, f := range fields {
-		for k, v := range f {
-			ff[k] = v
-		}
-	}
-	return &withFields{
-		error:         err,
-		fields:        ff,
-		causeHasStack: HasStack(err),
 	}
 }
 
@@ -489,16 +283,4 @@ func Find(origErr error, test func(error) bool) error {
 		return false
 	})
 	return foundErr
-}
-
-// Fields returns attached fields of the given error if available, else nil.
-func Fields(err error) F {
-	fieldsErr := Find(err, func(err error) bool {
-		_, ok := err.(*withFields)
-		return ok
-	})
-	if fieldsErr == nil {
-		return nil
-	}
-	return fieldsErr.(*withFields).fields
 }

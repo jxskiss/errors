@@ -55,6 +55,10 @@ func Append(err error, errs ...error) error {
 		}
 		return err
 
+	case *SizedErrors:
+		err.Append(errs...)
+		return err
+
 	default:
 		newErrs := make([]error, 0, len(errs)+1)
 		if err != nil {
@@ -78,7 +82,7 @@ func ErrOrNil(err error) error {
 		if len(err) == 0 {
 			return nil
 		}
-	case *sizedError:
+	case *SizedErrors:
 		if err == nil || err.count == 0 {
 			return nil
 		}
@@ -110,20 +114,20 @@ func (E MultiError) Format(f fmt.State, c rune) {
 	}
 }
 
-func NewSizedError(size int) *sizedError {
-	return &sizedError{
+func NewSizedError(size int) *SizedErrors {
+	return &SizedErrors{
 		errs: make([]error, size),
 		size: size,
 	}
 }
 
-type sizedError struct {
+type SizedErrors struct {
 	errs  []error
 	size  int
 	count int
 }
 
-func (E *sizedError) Append(errs ...error) {
+func (E *SizedErrors) Append(errs ...error) {
 	for _, err := range errs {
 		if err != nil {
 			E.errs[E.count%E.size] = err
@@ -132,7 +136,7 @@ func (E *sizedError) Append(errs ...error) {
 	}
 }
 
-func (E *sizedError) Error() string {
+func (E *SizedErrors) Error() string {
 	if E == nil || E.count == 0 {
 		return "<nil>"
 	}
@@ -152,7 +156,7 @@ func (E *sizedError) Error() string {
 // Errors returns the errors as a slice in reversed order, if the underlying
 // errors are more than size, only size errors will be returned, plus an
 // additional error indicates the omitted error count.
-func (E *sizedError) Errors() (errors []error) {
+func (E *SizedErrors) Errors() (errors []error) {
 	if E.count == 0 {
 		return nil
 	}
@@ -174,7 +178,7 @@ func (E *sizedError) Errors() (errors []error) {
 	return errors
 }
 
-func (E *sizedError) Format(f fmt.State, c rune) {
+func (E *SizedErrors) Format(f fmt.State, c rune) {
 	if c == 'v' && f.Flag('+') {
 		f.Write(formatMultiLine(E.Errors()))
 	} else {
