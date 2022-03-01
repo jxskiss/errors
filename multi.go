@@ -114,7 +114,7 @@ func (E MultiError) Format(f fmt.State, c rune) {
 	}
 }
 
-func NewSizedError(size int) *SizedErrors {
+func NewSizedErrors(size int) *SizedErrors {
 	return &SizedErrors{
 		errs: make([]error, size),
 		size: size,

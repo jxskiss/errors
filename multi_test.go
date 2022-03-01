@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_sizedError(t *testing.T) {
+func TestSizedErrors(t *testing.T) {
 	is := assert.New(t)
-	merr := NewSizedError(5)
+	merr := NewSizedErrors(5)
 
 	merr.Append(errors.New("error 1"))
 	is.Equal(merr.count, 1)
@@ -55,7 +55,7 @@ func Test_sizedError(t *testing.T) {
 	is.Equal(merrors[5].Error(), "and 102 more errors omitted")
 }
 
-func Test_MultiError(t *testing.T) {
+func TestMultiError(t *testing.T) {
 	is := assert.New(t)
 	var err error
 
