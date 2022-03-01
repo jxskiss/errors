@@ -24,6 +24,8 @@ const (
 	notProvisioned
 	notAssigned
 	methodNotAllowed
+	quotaLimitExceeded
+	notYetAvailable
 )
 
 func newTypedError(etype int, format string, args ...interface{}) error {
@@ -65,147 +67,169 @@ func ErrorStack(err error) string {
 	return fmt.Sprintf("%+v", err)
 }
 
-// IsTimeout reports whether err was timeout error.
+// IsTimeout reports whether err is a "timeout" error.
 func IsTimeout(err error) bool {
 	return isErrorType(err, timeout)
 }
 
-// Timeoutf represents an error with timeout message.
+// Timeoutf returns a typed error with " timeout" suffix.
 func Timeoutf(format string, args ...interface{}) error {
 	format += " timeout"
 	return newTypedError(timeout, format, args...)
 }
 
-// IsBadRequest reports whether err was bad request error.
+// IsBadRequest reports whether err is a "bad request" error.
 func IsBadRequest(err error) bool {
 	return isErrorType(err, badRequest)
 }
 
-// BadRequestf represents an error with bad request message.
+// BadRequestf returns a typed error with " bad request" suffix.
 func BadRequestf(format string, args ...interface{}) error {
 	format += " bad request"
 	return newTypedError(badRequest, format, args...)
 }
 
-// IsNotFound reports whether err was not found error.
+// IsNotFound reports whether err is a "not found" error.
 func IsNotFound(err error) bool {
 	return isErrorType(err, notFound)
 }
 
-// NotFoundf represents an error with not found message.
+// NotFoundf returns a typed error with " not found" suffix.
 func NotFoundf(format string, args ...interface{}) error {
 	format += " not found"
 	return newTypedError(notFound, format, args...)
 }
 
-// IsUserNotFound reports whether err was not found error.
+// IsUserNotFound reports whether err is a "user not found" error.
 func IsUserNotFound(err error) bool {
 	return isErrorType(err, userNotFound)
 }
 
-// UserNotFoundf represents an error with user not found message.
+// UserNotFoundf returns a typed error with " user not found" suffix.
 func UserNotFoundf(format string, args ...interface{}) error {
 	format += " user not found"
 	return newTypedError(userNotFound, format, args...)
 }
 
-// IsNotSupported reports whether err was not supported error.
+// IsNotSupported reports whether err is a "not supported" error.
 func IsNotSupported(err error) bool {
 	return isErrorType(err, notSupported)
 }
 
-// NotSupportedf represents an error with not supported message.
+// NotSupportedf returns a typed error with " not supported" suffix.
 func NotSupportedf(format string, args ...interface{}) error {
 	format += " not supported"
 	return newTypedError(notSupported, format, args...)
 }
 
-// IsNotValid reports whether err was not valid error.
+// IsNotValid reports whether err is a "not valid" error.
 func IsNotValid(err error) bool {
 	return isErrorType(err, notValid)
 }
 
-// NotValidf represents an error with not valid message.
+// NotValidf returns a typed error with " not valid" suffix.
 func NotValidf(format string, args ...interface{}) error {
 	format += " not valid"
 	return newTypedError(notValid, format, args...)
 }
 
-// IsAlreadyExists reports whether err was already exists error.
+// IsAlreadyExists reports whether err is an "already exists" error.
 func IsAlreadyExists(err error) bool {
 	return isErrorType(err, alreadyExists)
 }
 
-// AlreadyExistsf represents an error with already exists message.
+// AlreadyExistsf returns a typed error with " already exists" suffix.
 func AlreadyExistsf(format string, args ...interface{}) error {
 	format += " already exists"
 	return newTypedError(alreadyExists, format, args...)
 }
 
-// IsUnauthorized reports whether err was unauthorized error.
+// IsUnauthorized reports whether err is an "unauthorized" error.
 func IsUnauthorized(err error) bool {
 	return isErrorType(err, unauthorized)
 }
 
-// Unauthorizedf represents an error with unauthorized message.
+// Unauthorizedf returns a typed error with " unauthorized" suffix.
 func Unauthorizedf(format string, args ...interface{}) error {
 	format += " unauthorized"
 	return newTypedError(unauthorized, format, args...)
 }
 
-// IsForbidden reports whether err was forbidden error.
+// IsForbidden reports whether err is a "forbidden" error.
 func IsForbidden(err error) bool {
 	return isErrorType(err, forbidden)
 }
 
-// Forbiddenf represents an error with forbidden message.
+// Forbiddenf returns a typed error with " forbidden" suffix.
 func Forbiddenf(format string, args ...interface{}) error {
 	format += " forbidden"
 	return newTypedError(forbidden, format, args...)
 }
 
-// IsNotImplemented reports whether err was not implemented error.
+// IsNotImplemented reports whether err is a "not implemented" error.
 func IsNotImplemented(err error) bool {
 	return isErrorType(err, notImplemented)
 }
 
-// NotImplementedf represents an error with not implemented message.
+// NotImplementedf returns a typed error with " not implemented" suffix.
 func NotImplementedf(format string, args ...interface{}) error {
 	format += " not implemented"
 	return newTypedError(notImplemented, format, args...)
 }
 
-// IsNotProvisioned reports whether err was not provisioned error.
+// IsNotProvisioned reports whether err is a "not provisioned" error.
 func IsNotProvisioned(err error) bool {
 	return isErrorType(err, notProvisioned)
 }
 
-// NotProvisionedf represents an error with not provisioned message.
+// NotProvisionedf returns a typed error with " not provisioned" suffix.
 func NotProvisionedf(format string, args ...interface{}) error {
 	format += " not provisioned"
 	return newTypedError(notProvisioned, format, args...)
 }
 
-// IsNotAssigned reports whether err was not assigned error.
+// IsNotAssigned reports whether err is a "not assigned" error.
 func IsNotAssigned(err error) bool {
 	return isErrorType(err, notAssigned)
 }
 
-// NotAssignedf represents an error with not assigned message.
+// NotAssignedf returns a typed error with " not assigned" suffix.
 func NotAssignedf(format string, args ...interface{}) error {
 	format += " not assigned"
 	return newTypedError(notAssigned, format, args...)
 }
 
-// IsMethodNotAllowed reports whether err was method not allowed error.
+// IsMethodNotAllowed reports whether err is a "method not allowed" error.
 func IsMethodNotAllowed(err error) bool {
 	return isErrorType(err, methodNotAllowed)
 }
 
-// MethodNotAllowedf represents an error with method not allowed message.
+// MethodNotAllowedf returns a typed error with " method not allowed" suffix.
 func MethodNotAllowedf(format string, args ...interface{}) error {
 	format += " method not allowed"
 	return newTypedError(methodNotAllowed, format, args...)
+}
+
+// IsQuotaLimitExceeded reports whether err is a "quota limit exceeded" error.
+func IsQuotaLimitExceeded(err error) bool {
+	return isErrorType(err, quotaLimitExceeded)
+}
+
+// QuotaLimitExceededf returns a typed error with " quota limit exceeded" suffix.
+func QuotaLimitExceededf(format string, args ...interface{}) error {
+	format += " quota limit exceeded"
+	return newTypedError(quotaLimitExceeded, format, args...)
+}
+
+// IsNotYetAvailable reports whether err is a "not yet available" error.
+func IsNotYetAvailable(err error) bool {
+	return isErrorType(err, notYetAvailable)
+}
+
+// NotYetAvailablef returns a typed error with " not yet available" suffix.
+func NotYetAvailablef(format string, args ...interface{}) error {
+	format += " not yet available"
+	return newTypedError(notYetAvailable, format, args...)
 }
 
 // ==================== juju adaptor end ========================

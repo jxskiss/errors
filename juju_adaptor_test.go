@@ -19,6 +19,8 @@ var jujuAdaptorTestcases = []struct {
 	{NotProvisionedf, IsNotProvisioned},
 	{NotAssignedf, IsNotAssigned},
 	{MethodNotAllowedf, IsMethodNotAllowed},
+	{QuotaLimitExceededf, IsQuotaLimitExceeded},
+	{NotYetAvailablef, IsNotYetAvailable},
 }
 
 func TestJujuAdaptor(t *testing.T) {
