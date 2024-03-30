@@ -25,7 +25,7 @@ func wrap1() error {
 
 func wrap2() error {
 	err := wrap1()
-	return Wrap(err)
+	return WithStack(err)
 }
 
 func wrap3() error {
@@ -35,7 +35,7 @@ func wrap3() error {
 
 func wrap4() error {
 	err := wrap3()
-	return Wrap(err)
+	return WithStack(err)
 }
 
 func wrap5() error {
@@ -78,7 +78,7 @@ func TestErrorf(t *testing.T) {
 	}
 }
 
-func TestWrap(t *testing.T) {
+func TestWithStack(t *testing.T) {
 	err := wrap5()
 	if err == nil {
 		t.Fatalf("err should not be nil")

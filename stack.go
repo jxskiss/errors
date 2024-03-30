@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"errors"
 	"fmt"
 	"runtime"
 	"strings"
@@ -15,10 +16,17 @@ func Errorf(format string, a ...any) error {
 	return wrapError(err)
 }
 
-// Wrap wraps and error with stack frames.
+// NewWithStack returns an error that formats as the given text,
+// it also adds stack frames to the returned error.
+func NewWithStack(text string) error {
+	err := errors.New(text)
+	return wrapError(err)
+}
+
+// WithStack wraps an error with stack frames.
 // If the error already has stack frames, it does not add duplicate
 // stack frames.
-func Wrap(err error) error {
+func WithStack(err error) error {
 	if err == nil {
 		return nil
 	}
@@ -26,7 +34,7 @@ func Wrap(err error) error {
 }
 
 // GetFrames gets stack frames from err if any error in err's tree
-// is wrapped by Wrap or Errorf.
+// is wrapped by functions in this package.
 //
 // The only valid use for the return value is as an argument to
 // [runtime.CallersFrames]. In particular, it must not be passed to
