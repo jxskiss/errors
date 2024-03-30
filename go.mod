@@ -1,8 +1,3 @@
-module github.com/jxskiss/errors
+module github.com/jxskiss/errors/v2
 
-go 1.13
-
-require (
-	github.com/pkg/errors v0.9.1
-	github.com/stretchr/testify v1.3.0
-)
+go 1.21
