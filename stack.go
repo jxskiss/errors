@@ -1,7 +1,6 @@
 package errors
 
 import (
-	"errors"
 	"fmt"
 	"runtime"
 	"strings"
@@ -13,33 +12,39 @@ import (
 // it does not add duplicate stack frames.
 func Errorf(format string, a ...any) error {
 	err := fmt.Errorf(format, a...)
-	return wrapError(err)
+	return wrapError(0, err, nil)
 }
 
-// NewWithStack returns an error that formats as the given text,
-// it also adds stack frames to the returned error.
-func NewWithStack(text string) error {
-	err := errors.New(text)
-	return wrapError(err)
-}
-
-// WithStack wraps an error with stack frames.
+// Wrap wraps an error with stack frames.
 // If the error already has stack frames, it does not add duplicate
 // stack frames.
-func WithStack(err error) error {
-	if err == nil {
-		return nil
-	}
-	return wrapError(err)
+func Wrap(err error, details ...any) error {
+	return wrapError(0, err, details)
 }
 
-// GetFrames gets stack frames from err if any error in err's tree
+// WrapNew returns an error that formats as the given text,
+// it also wraps the error with stack frames.
+func WrapNew(text string, details ...any) error {
+	err := New(text)
+	return wrapError(0, err, details)
+}
+
+// Details gets wrapped details from err if available.
+func Details(err error) []any {
+	var detailsErr interface{ Details() []any }
+	if As(err, &detailsErr) {
+		return detailsErr.Details()
+	}
+	return nil
+}
+
+// Frames gets stack frames from err if any error in err's tree
 // is wrapped by functions in this package.
 //
 // The only valid use for the return value is as an argument to
 // [runtime.CallersFrames]. In particular, it must not be passed to
 // [runtime.FuncForPC].
-func GetFrames(err error) []uintptr {
+func Frames(err error) []uintptr {
 
 	// For long-running programs, the number of different error frames
 	// is usually small, and they don't change during program running.
@@ -48,9 +53,9 @@ func GetFrames(err error) []uintptr {
 	// stacktrace to reduce performance overhead at runtime.
 
 	var frames []uintptr
-	var stackErr *withStack
-	if As(err, &stackErr) && stackErr.stack != nil {
-		pcs := *stackErr.stack
+	var stackErr interface{ Frames() []uintptr }
+	if As(err, &stackErr) {
+		pcs := stackErr.Frames()
 		frames = pcs[:]
 		for i, pc := range pcs {
 			if pc == 0 {
@@ -62,10 +67,10 @@ func GetFrames(err error) []uintptr {
 	return frames
 }
 
-// GetStacktrace returns a formatted stacktrace if err contains
+// Stacktrace returns a formatted stacktrace if err contains
 // stack frames.
-func GetStacktrace(err error, indent string) string {
-	callers := GetFrames(err)
+func Stacktrace(err error, indent string) string {
+	callers := Frames(err)
 	if len(callers) == 0 {
 		return ""
 	}
@@ -75,14 +80,16 @@ func GetStacktrace(err error, indent string) string {
 	}
 
 	var buf strings.Builder
-	frame, more := frames.Next()
-	for i := 0; more; i++ {
-		if i > 0 {
+	for {
+		frame, more := frames.Next()
+		if buf.Len() > 0 {
 			buf.WriteByte('\n')
 		}
 		buf.WriteString(indent)
 		formatFrame(&buf, frame)
-		frame, more = frames.Next()
+		if !more { // no more frames to
+			break
+		}
 	}
 	return buf.String()
 }
@@ -94,29 +101,55 @@ func formatFrame(b *strings.Builder, frame runtime.Frame) {
 	fmt.Fprintf(b, "%s:%d  (%s)", file, line, fnName)
 }
 
-func wrapError(err error) error {
+func wrapError(skip int, err error, details []any) error {
+	if err == nil {
+		return nil
+	}
+	origErr := err
+	if len(details) > 0 {
+		innerDetails := Details(origErr)
+		details = append(details, innerDetails...)
+		err = &withDetails{
+			error:   err,
+			details: details,
+		}
+	}
 	var stackErr *withStack
-	if As(err, &stackErr) {
-		return err
+	if !As(origErr, &stackErr) {
+		var pcs stack
+		runtime.Callers(skip+3, pcs[:])
+		err = &withStack{
+			error: err,
+			stack: &pcs,
+		}
 	}
-	var pcs stack
-	runtime.Callers(3, pcs[:])
-	return &withStack{
-		inner: err,
-		stack: &pcs,
-	}
+	return err
 }
 
+type stack = [20]uintptr
+
 type withStack struct {
-	inner error
+	error
 	stack *stack
 }
 
-func (e *withStack) Error() string { return e.inner.Error() }
+func (e *withStack) Unwrap() error { return e.error }
 
-func (e *withStack) Unwrap() error { return e.inner }
+func (e *withStack) Frames() []uintptr {
+	if e.stack == nil {
+		return nil
+	}
+	return e.stack[:]
+}
 
-type stack = [20]uintptr
+type withDetails struct {
+	error
+	details []any
+}
+
+func (e *withDetails) Unwrap() error { return e.error }
+
+func (e *withDetails) Details() []any { return e.details }
 
 func setDefault[T comparable](dst *T, val T) {
 	var zero T

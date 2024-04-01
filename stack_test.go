@@ -2,13 +2,13 @@ package errors
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 )
 
 /*
  * Empty lines to keep the line numbers not changed.
- *
  *
  *
  *
@@ -25,7 +25,7 @@ func wrap1() error {
 
 func wrap2() error {
 	err := wrap1()
-	return WithStack(err)
+	return Wrap(err)
 }
 
 func wrap3() error {
@@ -35,25 +35,25 @@ func wrap3() error {
 
 func wrap4() error {
 	err := wrap3()
-	return WithStack(err)
+	return Wrap(err)
 }
 
 func wrap5() error {
 	return wrap4()
 }
 
-func TestGetStacktrace(t *testing.T) {
+func TestStacktrace(t *testing.T) {
 	err := wrap5()
 	if err == nil {
 		t.Fatalf("err should not be nil")
 	}
-	stacktrace := GetStacktrace(err, "")
+	stacktrace := Stacktrace(err, "")
 	wantStrs := []string{
 		"jxskiss/errors/stack_test.go:28  (github.com/jxskiss/errors/v2.wrap2)",
 		"jxskiss/errors/stack_test.go:32  (github.com/jxskiss/errors/v2.wrap3)",
 		"jxskiss/errors/stack_test.go:37  (github.com/jxskiss/errors/v2.wrap4)",
 		"jxskiss/errors/stack_test.go:42  (github.com/jxskiss/errors/v2.wrap5)",
-		"jxskiss/errors/stack_test.go:46  (github.com/jxskiss/errors/v2.TestGetStacktrace)",
+		"jxskiss/errors/stack_test.go:46  (github.com/jxskiss/errors/v2.TestStacktrace)",
 	}
 	t.Logf("\n%s\n", stacktrace)
 	for _, str := range wantStrs {
@@ -74,27 +74,68 @@ func TestErrorf(t *testing.T) {
 	}
 	var stackErr *withStack
 	if !As(err, &stackErr) {
-		t.Fatalf("err should contains stack frames")
+		t.Fatalf("err should contain stack frames")
 	}
 }
 
-func TestWithStack(t *testing.T) {
+func TestWrap(t *testing.T) {
 	err := wrap5()
 	if err == nil {
 		t.Fatalf("err should not be nil")
 	}
 	var stackErr *withStack
 	if !As(err, &stackErr) {
-		t.Fatalf("err should contains stack frames")
+		t.Fatalf("err should contain stack frames")
 	}
 }
 
-func TestGetFrames(t *testing.T) {
+func TestWrapNew(t *testing.T) {
+	f1 := func() error {
+		return WrapNew("test error from WrapNew")
+	}
+	f2 := func() error {
+		return fmt.Errorf("fmt.Errorf: %w", f1())
+	}
+	err := f2()
+	want := "fmt.Errorf: test error from WrapNew"
+	if err.Error() != want {
+		t.Fatalf("want %q but got %q", want, err.Error())
+	}
+	if len(Frames(err)) == 0 {
+		t.Fatalf("err should contain stack frames")
+	}
+}
+
+func TestDetails(t *testing.T) {
+	f1 := func() error {
+		return WrapNew("test error from WrapNew", 1, "abc")
+	}
+	f2 := func() error {
+		return fmt.Errorf("fmt.Errorf: %w", f1())
+	}
+	f3 := func() error {
+		return Wrap(f2(), 2, "def")
+	}
+	err := f3()
+	wantErrMsg := "fmt.Errorf: test error from WrapNew"
+	if err.Error() != wantErrMsg {
+		t.Fatalf("want %q but got %q", wantErrMsg, err.Error())
+	}
+	if len(Frames(err)) == 0 {
+		t.Fatalf("err should contain stack frames")
+	}
+	wantDetails := []any{2, "def", 1, "abc"}
+	if !reflect.DeepEqual(Details(err), wantDetails) {
+		t.Fatalf("got unexpected error details: %q", Details(err))
+	}
+}
+
+func TestFrames(t *testing.T) {
 	err := wrap5()
 	if err == nil {
 		t.Fatalf("err should not be nil")
 	}
-	if len(GetFrames(err)) == 0 {
-		t.Fatalf("err should contains stack frames")
+	if len(Frames(err)) == 0 {
+		t.Fatalf("err should contain stack frames")
 	}
 }
