@@ -67,8 +67,7 @@ func Frames(err error) []uintptr {
 	return frames
 }
 
-// Stacktrace returns a formatted stacktrace if err contains
-// stack frames.
+// Stacktrace returns a formatted stacktrace if err contains stack frames.
 func Stacktrace(err error, indent string) string {
 	callers := Frames(err)
 	if len(callers) == 0 {
