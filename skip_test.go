@@ -6,10 +6,10 @@ import (
 )
 
 func errWrapper(err error) error {
-	return Skip(1).Wrap(err)
+	return StackSkip(1).Wrap(err)
 }
 
-func TestSkip(t *testing.T) {
+func TestStackSkip(t *testing.T) {
 	err1 := errWrapper(inner())
 	stacktrace1 := Stacktrace(err1, "")
 	if strings.Contains(stacktrace1, "errWrapper") {
