@@ -7,6 +7,8 @@
 .idea
 _obj
 _test
+_examples
+_playground
 
 # Architecture specific extensions/prefixes
 *.[568vq]
