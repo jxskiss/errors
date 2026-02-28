@@ -6,26 +6,10 @@ import (
 	"strings"
 )
 
-// Errorf formats a string error using fmt.Errorf and wraps
-// it with stack frames.
-// If the formatted error already has stack frames,
-// it does not add duplicate stack frames.
-func Errorf(format string, a ...any) error {
-	err := fmt.Errorf(format, a...)
-	return wrapError(0, err, nil)
-}
-
 // Wrap wraps an error with stack frames.
 // If the error already has stack frames, it does not add duplicate
 // stack frames.
 func Wrap(err error, details ...any) error {
-	return wrapError(0, err, details)
-}
-
-// WrapNew returns an error that formats as the given text,
-// it also wraps the error with stack frames.
-func WrapNew(text string, details ...any) error {
-	err := New(text)
 	return wrapError(0, err, details)
 }
 

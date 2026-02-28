@@ -30,7 +30,7 @@ func wrap2() error {
 
 func wrap3() error {
 	err := wrap2()
-	return Errorf("wrap3: %w", err)
+	return fmt.Errorf("wrap3: %w", err)
 }
 
 func wrap4() error {
@@ -89,26 +89,9 @@ func TestWrap(t *testing.T) {
 	}
 }
 
-func TestWrapNew(t *testing.T) {
-	f1 := func() error {
-		return WrapNew("test error from WrapNew")
-	}
-	f2 := func() error {
-		return fmt.Errorf("fmt.Errorf: %w", f1())
-	}
-	err := f2()
-	want := "fmt.Errorf: test error from WrapNew"
-	if err.Error() != want {
-		t.Fatalf("want %q but got %q", want, err.Error())
-	}
-	if len(Frames(err)) == 0 {
-		t.Fatalf("err should contain stack frames")
-	}
-}
-
 func TestDetails(t *testing.T) {
 	f1 := func() error {
-		return WrapNew("test error from WrapNew", 1, "abc")
+		return Wrap(New("test error from WrapNew"), 1, "abc")
 	}
 	f2 := func() error {
 		return fmt.Errorf("fmt.Errorf: %w", f1())

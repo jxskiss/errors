@@ -10,10 +10,7 @@ Functions New, Is, As, Unwrap, Join are alias functions to package "errors".
 
 Function Wrap wraps an error with stack frames.
 
-Function WrapNew is similar to New, but it also adds stack frames.
-
-Function Errorf formats a string error using fmt.Errorf and wraps it with stack frames,
-the frames can be retrieved by function Frames.
+Stack frames can be retrieved by function Frames.
 For simple use-case, user may use function Stacktrace to get
 a formatted stacktrace.
 
@@ -22,7 +19,7 @@ Extra details attached to an error can be retrieved by function Details.
 Functions Cause, AddStack, WithStack, WithMessage, WithMessagef are deprecated,
 they are kept not removed to help migrating from the v1 package.
 
-`go get github.com/jxskiss/errors/v2`
+`go get github.com/jxskiss/errors/v2@latest`
 
 [Read the package documentation for more information](https://godoc.org/github.com/jxkiss/errors/v2).
 
